@@ -8,50 +8,56 @@ const tar = require('tar-stream')
 const pack = tar.pack()
 const extract = tar.extract()
 
-let tgz_in_file = 'files/package.tgz'
-let tgz_out_file = 'output/package.tgz'
-const input = fs.createReadStream(tgz_in_file)
+function modify(in_file, out_file, callback) {
 
+  if (!in_file) { throw 'no input file specified' }
+  if (!out_file) { throw 'no output file specified' }
 
-const gunzip = zlib.createGunzip()
-const gzip = zlib.createGzip()
+  const input = fs.createReadStream(in_file)
 
-input.pipe(gunzip) // unzip the tar
-.pipe(extract) // parse the tar
-  .on('entry', (header, stream, next) => {
-    let file = header.name
-    if (file == 'package/package.json') { // read package/package.json
-      let package_json_contents = '';
+  const gunzip = zlib.createGunzip()
+  const gzip = zlib.createGzip()
 
-      stream.on('data', (d) => { // fill the string buffer
-        package_json_contents += new Buffer(d, 'utf8').toString()
-      })
-
-      stream.on('end', () => { // inflate and modify the json
-        let package_json_obj = JSON.parse(package_json_contents)
-        package_json_obj.name = 'not-ts-clipboard-anymore'
-        package_json_obj.devDependencies['omg'] ='1.0.0'
-        let package_json_buffer = JSON.stringify(package_json_obj, null, '\t')
-        
-        stream.pipe(pack.entry(header, package_json_buffer, next))  //replace the existing package_json_buffer w/ the new one
-        stream.end()
-      })
-    } else {
-      let data = '' // if it isn't package/package.json, then just repipe the original data
-      stream.on('data', (d) => data += new Buffer(d, 'utf8').toString())
-      stream.on('end', () => { stream.pipe(pack.entry(header, data, next)) ; next() })
-    }
-  })
-  .on('end', () => {
-    console.log('EOF')
-  })
-  .on('finish', () => {
-    pack.finalize() // >> .tar
-  })
+  input.pipe(gunzip) // unzip the tar
+    .pipe(extract) // parse the tar
+    .on('entry', (header, stream, next) => {
+      let file = header.name
+        let data_in = ''
+        stream.on('data', (d) => data_in += new Buffer(d, 'utf8').toString())
+        stream.on('end', () => {
+          let data_out = callback(header, data_in)
+          if (data_out) {
+            stream.pipe(pack.entry(header, data_out, next))
+          } next()
+        })
+      // }
+    })
+    .on('end', () => {
+      console.log('EOF')
+    })
+    .on('finish', () => {
+      pack.finalize() // >> .tar
+    })
 
   input.on('close', () => {
-    let outstream = new fs.createWriteStream(tgz_in_file)
+    let outstream = new fs.createWriteStream(out_file)
     pack.pipe(gzip) // >> .tgz
-    .pipe(outstream) // >> outfile.tgz
+      .pipe(outstream) // >> outfile.tgz
   })
 
+}
+
+// sample usage
+// modify('files/package.tgz', 'output/package.tgz', (header, data) => {
+//   switch(header.name) {
+//     case 'package/package.json':
+//       let obj = JSON.parse(data)
+//       obj.name = 'some-other-project'
+//       obj.author = 'Some Jerk'
+//       data = JSON.stringify(obj, null, '\t')
+//       break;
+//     case 'package/README.md':
+//       return null // returning null will skip the file.
+//   }
+//   return data
+// })
