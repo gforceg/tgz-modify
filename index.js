@@ -8,7 +8,7 @@ const tar = require('tar-stream')
 const pack = tar.pack()
 const extract = tar.extract()
 
-function modify(in_file, out_file, callback) {
+module.exports = function (in_file, out_file, callback) {
 
   if (!in_file) { throw 'no input file specified' }
   if (!out_file) { throw 'no output file specified' }
