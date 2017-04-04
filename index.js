@@ -7,14 +7,11 @@ const child_process = require('child_process')
 const tar = require('tar-stream')
 const pack = tar.pack()
 const extract = tar.extract()
-// let tgz_file = path.join('files', 'package.tgz')
-// let tar_file = path.join('files', 'package.tar')
 
-let tgz_file = 'files/package.tgz'
-let tar_file = 'files/package.tar'
-const input = fs.createReadStream(tgz_file)
-const new_tgz = fs.createWriteStream('files/package_new.tar')
-// const output = fs.createWriteStream(tar_file)
+let tgz_in_file = 'files/package.tgz'
+let tgz_out_file = 'output/package.tgz'
+const input = fs.createReadStream(tgz_in_file)
+let outstream = new fs.createWriteStream(tgz_out_file)
 
 const gunzip = zlib.createGunzip()
 const gzip = zlib.createGzip()
@@ -36,23 +33,30 @@ input.pipe(gunzip) // unzip the tar
         let package_json_obj = JSON.parse(package_json_contents)
         package_json_obj.name = 'not-ts-clipboard-anymore'
         package_json_obj.devDependencies['omg'] ='1.0.0'
-        new fs.createWriteStream('files/test.json').write(JSON.stringify(package_json_obj, null, '\t'))
-        // stream.pipe(pack.entry(header, JSON.stringify(package_json_obj, null, '\t', next)))
-        // .pipe(gzip)
-        // .pipe(new_tgz)
-        // .pipe(gzip)
-        // .pipe(new StreamWriter('files/package2.tgz'))
+        let package_json_buffer = JSON.stringify(package_json_obj, null, '\t')
+
+        stream.pipe(pack.entry(header, package_json_buffer, next))
         stream.end()
-        // next()
-        // e.pipe(tar.Pack({ name: 'package/package.json'}, JSON.stringify(package_json_obj)))
-        // e.pipe(new fs.createWriteStream('files/test.json'))
-        // .pipe(gzip)
       })
     } else {
-      stream.on('end', () => next())
+      let data = ''
+        // if it isn't package/package.json, then just repipe the original data
+      stream.on('data', (d) => data += new Buffer(d, 'utf8').toString())
+      stream.on('end', () => {
+        console.log('repiping original', header.name)
+        stream.pipe(pack.entry(header, data, next))
+        next()
+      })
     }
   })
   .on('end', () => {
     console.log('EOF')
   })
+  .on('finish', () => {
+    pack.finalize()
+  })
+
+  pack.pipe(gzip)
+  .pipe(outstream)
+  
 // })
