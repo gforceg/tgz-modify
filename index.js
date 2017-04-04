@@ -11,7 +11,7 @@ const extract = tar.extract()
 let tgz_in_file = 'files/package.tgz'
 let tgz_out_file = 'output/package.tgz'
 const input = fs.createReadStream(tgz_in_file)
-let outstream = new fs.createWriteStream(tgz_out_file)
+
 
 const gunzip = zlib.createGunzip()
 const gzip = zlib.createGzip()
@@ -49,5 +49,9 @@ input.pipe(gunzip) // unzip the tar
     pack.finalize() // >> .tar
   })
 
-  pack.pipe(gzip) // >> .tgz
-  .pipe(outstream) // >> outfile.tgz
+  input.on('close', () => {
+    let outstream = new fs.createWriteStream(tgz_in_file)
+    pack.pipe(gzip) // >> .tgz
+    .pipe(outstream) // >> outfile.tgz
+  })
+
