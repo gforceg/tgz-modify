@@ -22,14 +22,14 @@ module.exports = function (in_file, out_file, callback) {
     .pipe(extract) // parse the tar
     .on('entry', (header, stream, next) => {
       let file = header.name
-        let data_in = ''
-        stream.on('data', (d) => data_in += new Buffer(d, 'utf8').toString())
-        stream.on('end', () => {
-          let data_out = callback(header, data_in)
-          if (data_out) {
-            stream.pipe(pack.entry(header, data_out, next))
-          } next()
-        })
+      let data_in = ''
+      stream.on('data', (d) => data_in += new Buffer(d, 'utf8').toString())
+      stream.on('end', () => {
+        let data_out = callback(header, data_in)
+        if (data_out) {
+          stream.pipe(pack.entry(header, data_out, next))
+        } next()
+      })
       // }
     })
     .on('end', () => {
@@ -47,17 +47,5 @@ module.exports = function (in_file, out_file, callback) {
 
 }
 
-// sample usage
-// modify('files/package.tgz', 'output/package.tgz', (header, data) => {
-//   switch(header.name) {
-//     case 'package/package.json':
-//       let obj = JSON.parse(data)
-//       obj.name = 'some-other-project'
-//       obj.author = 'Some Jerk'
-//       data = JSON.stringify(obj, null, '\t')
-//       break;
-//     case 'package/README.md':
-//       return null // returning null will skip the file.
-//   }
-//   return data
-// })
+// sample usage: print each file in the package and change nothing (modify data to make changes, return null to omit a file in the new .tgz)
+// modify('files/package.tgz', 'output/package.tgz', (header, data) => { console.log(header.name) ; return data })
