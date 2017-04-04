@@ -1,0 +1,5 @@
+writing a buffer
+est 
+of 
+file 
+streams 
