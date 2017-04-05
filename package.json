@@ -1,6 +1,6 @@
 {
   "name": "tgz-modify",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "modify .tgz file entries:",
   "main": "index.js",
   "scripts": {
@@ -25,5 +25,6 @@
   "bugs": {
     "url": "https://github.com/gforceg/tgz-modify/issues"
   },
+  "typings": "index.d.ts",
   "homepage": "https://github.com/gforceg/tgz-modify#readme"
 }
