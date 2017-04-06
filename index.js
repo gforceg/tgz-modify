@@ -7,6 +7,7 @@ module.exports = function (in_file, out_file, callback) {
 
   if (!in_file) { throw 'no input file specified' }
   if (!out_file) { throw 'no output file specified' }
+  if (!callback) { throw 'no callback was specified' }
 
   let input = fs.createReadStream(in_file)
 
@@ -14,11 +15,9 @@ module.exports = function (in_file, out_file, callback) {
   const gzip = zlib.createGzip()
   const pack = tar.pack()
   const extract = tar.extract()
-
   input.pipe(gunzip) // unzip the tar
     .pipe(extract) // parse the tar
     .on('entry', (header, stream, next) => {
-      let file = header.name
       let data_in = ''
       stream.on('data', (d) => data_in += new Buffer(d, 'utf8').toString())
       stream.on('end', () => {
@@ -33,11 +32,11 @@ module.exports = function (in_file, out_file, callback) {
       pack.finalize() // >> .tar
     })
 
-  input.on('finish', () => {
+  input.on('close', () => {
     input.close()
-    // let outstream = new fs.createWriteStream(out_file)
+    let outstream = new fs.createWriteStream(out_file, {autoClose: true})
     pack.pipe(gzip) // >> .tgz
-      .pipe(new fs.createWriteStream(out_file, {autoClose: true})) // >> outfile.tgz
+    .pipe(outstream) // >> outfile.tgz
   })
 }
 
