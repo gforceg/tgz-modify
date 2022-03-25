@@ -3,7 +3,7 @@ const path = require('path')
 const fs = require('fs')
 const tar = require('tar-stream')
 
-module.exports = function (in_file, out_file, callback, onFinish = () => {}) {
+module.exports = async function (in_file, out_file, callback, onFinish = () => {}) {
 
   if (!in_file) { throw 'no input file specified' }
   if (!out_file) { throw 'no output file specified' }
@@ -13,6 +13,10 @@ module.exports = function (in_file, out_file, callback, onFinish = () => {}) {
 
   let res, rej
   const p = new Promise((...args) => [res, rej] = args)
+  const result = (err) => {
+    err ? rej (err) : res()
+    onFinish(err)
+  }
 
   const gunzip = zlib.createGunzip()
   const gzip = zlib.createGzip()
@@ -22,15 +26,22 @@ module.exports = function (in_file, out_file, callback, onFinish = () => {}) {
     .pipe(extract) // parse the tar
     .on('entry', (header, stream, next) => {
       let data_in = ''
+      stream.on('error', result)
       stream.on('data', (d) => data_in += new Buffer(d, 'utf8').toString())
       stream.on('end', () => {
-        let data_out = callback(header, data_in)
+        let data_out
+        try {
+          data_out = callback(header, data_in)
+        } catch (err) {
+          stream.emit('error', err)
+        }
+
         if (data_out) {
           stream.pipe(pack.entry(header, data_out, next))
         } next()
       })
-      // }
     })
+    .on('error', result)
     .on('finish', () => {
       pack.finalize() // >> .tar
     })
@@ -40,14 +51,8 @@ module.exports = function (in_file, out_file, callback, onFinish = () => {}) {
     let outstream = new fs.createWriteStream(out_file, {autoClose: true})
 
     // https://github.com/nodejs/node/issues/15262
-    .on('error', (err) => {
-      rej(err)
-      onFinish(err)
-    })
-    .on('finish', () => {
-      res()
-      onFinish()
-    })
+    .on('error', result)
+    .on('finish', result)
 
     pack.pipe(gzip) // >> .tgz
     .pipe(outstream) // >> outfile.tgz

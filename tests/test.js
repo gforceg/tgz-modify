@@ -57,6 +57,22 @@ intent('triggers onEnd handler if specified', async () => {
   assert.equal(pResult, void 0)
 })
 
+intent('captures callback errors', async () => {
+  const err = new Error()
+  let pResult, cbResult
+  const onFinish = err => cbResult = err
+  const cb = () => { throw err }
+
+  try {
+    pResult = await tgz_modify(tgz_in, tgz_out, cb, onFinish)
+  } catch (e) {
+    pResult = e
+  }
+
+  assert.equal(pResult, cbResult)
+  assert.equal(pResult, err)
+})
+
 // intent('the output file should exist', () => {
 //   return fs.existsSync(tgz_out)
 // })
