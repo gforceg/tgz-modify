@@ -1,6 +1,6 @@
 {
   "name": "tgz-modify",
-  "version": "1.0.5",
+  "version": "2.0.0",
   "description": "modify .tgz file entries:",
   "main": "index.js",
   "scripts": {
