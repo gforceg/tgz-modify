@@ -3,13 +3,16 @@ const path = require('path')
 const fs = require('fs')
 const tar = require('tar-stream')
 
-module.exports = function (in_file, out_file, callback) {
+module.exports = function (in_file, out_file, callback, onFinish = () => {}) {
 
   if (!in_file) { throw 'no input file specified' }
   if (!out_file) { throw 'no output file specified' }
   if (!callback) { throw 'no callback was specified' }
 
   let input = fs.createReadStream(in_file)
+
+  let res, rej
+  const p = new Promise((...args) => [res, rej] = args)
 
   const gunzip = zlib.createGunzip()
   const gzip = zlib.createGzip()
@@ -35,9 +38,22 @@ module.exports = function (in_file, out_file, callback) {
   input.on('close', () => {
     input.close()
     let outstream = new fs.createWriteStream(out_file, {autoClose: true})
+
+    // https://github.com/nodejs/node/issues/15262
+    .on('error', (err) => {
+      rej(err)
+      onFinish(err)
+    })
+    .on('finish', () => {
+      res()
+      onFinish()
+    })
+
     pack.pipe(gzip) // >> .tgz
     .pipe(outstream) // >> outfile.tgz
   })
+
+  return p
 }
 
 // sample usage: print each file in the package and change nothing (modify data to make changes, return null to omit a file in the new .tgz)

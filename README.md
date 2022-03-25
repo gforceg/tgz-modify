@@ -22,6 +22,12 @@ tgz_modify('files/package.tgz', 'output/package.tgz', (header, data) => {
   }
   return data
 })
+
+// to handle `onFinish` event pass an additional callback
+tgz_modify('files/package.tgz', 'output/package.tgz', (h, d) => d, (err) => {})
+
+// or just await a promise
+await tgz_modify('files/package.tgz', 'output/package.tgz', ...)
 ```
 
 To overwrite the .tgz file, simply use the same filename for the output file: 
